@@ -43,22 +43,29 @@ export class UserResolver {
     @Parent() user: User,
     @Args() filters: EmailFiltersArgs,
   ): Promise<UserEmail[]> {
-    const where: FindOptionsWhere<EmailEntity> = {
+    const defaultWhere: FindOptionsWhere<EmailEntity> = {
       userId: Equal(user.id),
     };
+    const where: FindOptionsWhere<EmailEntity>[] = [];
 
     if (filters.address) {
       if (filters.address.equal) {
-        where.address = Equal(filters.address.equal);
+        where.push({
+          ...defaultWhere,
+          address: Equal(filters.address.equal),
+        });
       }
 
       if (filters.address.in?.length > 0) {
-        where.address = In(filters.address.in);
+        where.push({
+          ...defaultWhere,
+          address: In(filters.address.in),
+        });
       }
     }
 
     return this.emailRepository.find({
-      where,
+      where: where.length > 0 ? where : defaultWhere,
       order: { address: 'asc' },
     });
   }
