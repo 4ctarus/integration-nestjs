@@ -3,6 +3,8 @@ export type IEmail = {
   address: string;
 };
 
+export type IAddEmail = Omit<IEmail, 'id'>;
+
 export type IEmailFilters = {
   address?: { equal: string; in: string[] } | null;
 };
