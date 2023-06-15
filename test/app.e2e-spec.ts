@@ -263,5 +263,50 @@ describe('Tests e2e', () => {
           });
       });
     });
+
+    describe('[Mutation] addEmail', () => {
+      const validEmailAddress = 'valid@valid.com';
+      const unknownUserId = '0f9f5ea9-f618-44e5-b182-0e3c83586f8b';
+
+      it(`[13] Devrait ajouter un email`, () => {
+        return request(app.getHttpServer())
+          .post('/graphql')
+          .send({
+            query: `mutation {addEmail(address:"${validEmailAddress}" userId:"${knownUserId}")}`,
+          })
+          .expect(200)
+          .expect((res) => {
+            expect(res.body.data.addEmail).toBeDefined();
+          });
+      });
+
+      it(`[14] Devrait retourner une erreur si l'identifiant de l'utilisateur est inconnu`, () => {
+        return request(app.getHttpServer())
+          .post('/graphql')
+          .send({
+            query: `mutation {addEmail(address:"${validEmailAddress}" userId:"${unknownUserId}")}`,
+          })
+          .expect(200)
+          .expect((res) => {
+            expect(
+              res.body.errors?.[0]?.extensions?.originalError?.message,
+            ).toContain("L'utilisateur n'a pas été trouvé");
+          });
+      });
+
+      it(`[15] Devrait retourner une erreur de validation si l'adresse email définie est non conforme`, () => {
+        return request(app.getHttpServer())
+          .post('/graphql')
+          .send({
+            query: `mutation {addEmail(address:"dz@tahia" userId:"${knownUserId}")}`,
+          })
+          .expect(200)
+          .expect((res) => {
+            expect(
+              res.body.errors?.[0]?.extensions?.originalError?.message,
+            ).toContain("L'adresse email définie n'est pas conforme");
+          });
+      });
+    });
   });
 });
