@@ -1,4 +1,3 @@
-import { NotFoundException } from '@nestjs/common';
 import {
   Args,
   ID,
@@ -8,12 +7,11 @@ import {
   ResolveField,
   Resolver,
 } from '@nestjs/graphql';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Equal, FindOptionsWhere, In, Repository } from 'typeorm';
-import { UserService } from '../user/user.service';
+import { Equal, FindOptionsWhere, In } from 'typeorm';
 import { User } from '../user/user.types';
 import { EmailEntity } from './email.entity';
 import { EmailAddress, EmailId } from './email.interfaces';
+import { EmailService } from './email.service';
 import {
   AddEmail,
   EmailAddressArgs,
@@ -23,15 +21,11 @@ import {
 
 @Resolver(() => UserEmail)
 export class EmailResolver {
-  constructor(
-    private readonly _userService: UserService,
-    @InjectRepository(EmailEntity)
-    private readonly emailRepository: Repository<EmailEntity>,
-  ) {}
+  constructor(private readonly _service: EmailService) {}
 
   @Query(() => UserEmail, { name: 'email' })
   getEmail(@Args({ name: 'emailId', type: () => ID }) emailId: string) {
-    return this.emailRepository.findOneBy({ id: Equal(emailId) });
+    return this._service.get(emailId);
   }
 
   @Query(() => [UserEmail], { name: 'emailsList' })
@@ -52,43 +46,23 @@ export class EmailResolver {
       }
     }
 
-    return this.emailRepository.find({
-      where,
-      order: { address: 'asc' },
-    });
+    return this._service.find(where);
   }
 
   @Mutation(() => ID)
   async addEmail(@Args() email: AddEmail): Promise<EmailId> {
-    const userExists = await this._userService.get(email.userId);
-    if (!userExists) {
-      throw new NotFoundException(`L'utilisateur n'a pas été trouvé`);
-    }
-
-    const addedEmail = await this.emailRepository.insert(email);
-    const emailId = addedEmail.identifiers[0].id;
-
-    return emailId;
+    return this._service.add(email, email.userId);
   }
 
   @Mutation(() => ID)
   async deactivateUser(
     @Args() { address }: EmailAddressArgs,
   ): Promise<EmailAddress> {
-    const emailExists = await this.emailRepository.exist({
-      where: { address: Equal(address) },
-    });
-    if (!emailExists) {
-      throw new NotFoundException(`L'email n'a pas été trouvé`);
-    }
-
-    await this.emailRepository.delete({ address: Equal(address) });
-
-    return address;
+    return this._service.deactivate(address);
   }
 
   @ResolveField(() => User, { name: 'user' })
   async getUser(@Parent() parent: UserEmail): Promise<User> {
-    return this._userService.getByEmailAddress(parent.address);
+    return this._service.getEmailUser(parent.address);
   }
 }
